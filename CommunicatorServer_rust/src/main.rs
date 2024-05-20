@@ -1,16 +1,29 @@
-use std::net::TcpListener;
+use std::{io::{Read, Write}, net::{TcpListener, TcpStream}};
 
-fn main() {
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+fn handle_connection(mut stream: TcpStream) {
+    let mut buffer = [0; 1024];
 
-    handle_connection(listener);
+    stream.read(&mut buffer).expect("Error reading data");
+
+    let request = String::from_utf8_lossy(&buffer[..]);
+    println!("Received request: {}", request);
+
+    let response = "Hello Client".as_bytes();
+
+    stream.write(response).expect("Mazno ni");
 }
 
-fn handle_connection(listener: TcpListener) {
+fn main() {
+    let listener = TcpListener::bind("127.0.0.1:3058")
+        .expect("Failed to bind IP address");
+    println!("Server listening on localhost : 3058");
 
     for stream in listener.incoming() {
-        let stream = stream.unwrap();
-
-        println!("Connection established!");
+        match stream {
+            Ok(stream) => {
+                std::thread::spawn(|| handle_connection(stream));
+            },
+            Err(e) => eprintln!("{:?}", e)
+        }
     }
 }
