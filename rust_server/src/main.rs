@@ -11,6 +11,7 @@ fn handle_connection(mut stream: TcpStream) {
     let response = "Hello Client".as_bytes();
 
     stream.write(response).expect("Mazno ni");
+    stream.write(response).expect("Problema");
 }
 
 fn main() {
