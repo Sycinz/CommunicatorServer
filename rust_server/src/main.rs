@@ -1,7 +1,7 @@
 use std::{io::{Read, Write}, net::{TcpListener, TcpStream}};
 
 fn handle_connection(mut stream: TcpStream) {
-    // Creating buffer for data read
+    // Creating buffer for data reading
     let mut buffer = [0; 1024];
     // Reading data from the stream
     stream.read(&mut buffer).expect("Error reading data");
