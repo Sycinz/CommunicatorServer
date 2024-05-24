@@ -8,11 +8,14 @@ struct User {
     permission: String,
     rank: String
 }
-
 struct Message {
     nick: String,
     message: String,
     date: String
+}
+
+struct UsersList {
+    users: Vec<String>
 }
 
 fn handle_connection(mut stream: TcpStream) {

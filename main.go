@@ -1,254 +1,169 @@
 package main
 
 import (
-    "encoding/json"
-    "fmt"
-    "net"
-    "time"
-    "github.com/google/uuid"
-	"gorm.io/gorm"
-    "gorm.io/driver/sqlite"
+	"encoding/json"
+	"fmt"
+	"net"
+	"time"
+
+	"github.com/google/uuid"
 )
 
+// Struktura tego z czego słada się user
 type User struct {
-    Nick       string `json:"Nick"`
-    Image      string `json:"Image"`
-    UUID       string
-    Connection net.Conn
+	Nick       string `json:"Nick"`
+	Image      string `json:"Image"`
+	UUID       string
+	Connection net.Conn
 	Permission string `json:"Permission"`
-	Rank 	   string `json:"Rank"`
+	Rank       string `json:"Rank"`
 }
 
+// Z czego skłąda się wiadomość
 type Message struct {
-    Nick    string `json:"Nick"`
-    Message string `json:"Message"`
-    Date    string `json:"Date"`
+	Nick    string `json:"Nick"`
+	Message string `json:"Message"`
+	Date    string `json:"Date"`
 }
 
+// Lista użytkowników ( to jest wiadomośc która jest wysyłana i przez nią widać kto jest online)
 type UsersList struct {
-    Users []User `json:"Users"`
+	Users []User `json:"Users"`
 }
 
-type Type int
+var users []User // Lista użytkowników którą ma serwer
 
-const (
-	Chat Type = 1
-	Voice Type = 2
-)
-
-type Channel struct {
-	Users []User
-	MaximumUsers int
-	ChannelName string
-	ChannelDescription string
-	ChannelPassword string
-	ChannelType Type
-	CreationTime time.Time
-}
-
-var users []User
-
+// Połączenie z klientem
 func handleConnection(conn net.Conn) {
-    defer conn.Close()
+	defer conn.Close() // Zamykanie połączenia
 
-    buffer := make([]byte, 2000)
+	buffer := make([]byte, 2000) // Tworzenie bufora na dane
 
-    n, err := conn.Read(buffer)
-    if err != nil {
-        fmt.Println("Błąd odczytu danych:", err)
-        return
-    }
+	n, err := conn.Read(buffer) // Odczyt danych
+	if err != nil {
+		fmt.Println("Błąd odczytu danych:", err)
+		return
+	}
 
-    user := User{
-        Image:      "Empty",
-        UUID:       uuid.New().String(),
-        Connection: conn,
-    }
+	user := User{ // Tworzenie nowego użytkownika
+		Image:      "Empty",
+		UUID:       uuid.New().String(),
+		Connection: conn,
+	}
 
-    nickJSON := string(buffer[:n])
-    json.Unmarshal([]byte(nickJSON), &user)
-    fmt.Printf("Nick od klienta: %s\n", user.Nick)
+	nickJSON := string(buffer[:n])                 // Odczyt nicku
+	json.Unmarshal([]byte(nickJSON), &user)        // Parsowanie nicku ( dostajesz nic w wiado )
+	fmt.Printf("Nick od klienta: %s\n", user.Nick) // Wyświetlenie nicku
 
-    fmt.Println("Nowy użytkownik:", user.Nick)
+	fmt.Println("Nowy użytkownik:", user.Nick) // Komunikat o nowym użytkowniku
 
-    users = append(users, user)
+	users = append(users, user) // Dodanie użytkownika do listy
 
-    sendUsersListToAll()
+	sendUsersListToAll() // Wysłanie listy użytkowników do wszystkich
 
-    buffer = make([]byte, 2000)
-    for {
-        n, err := conn.Read(buffer)
-        if err != nil {
-            fmt.Println("Błąd odczytu danych:", err)
-            buffer = nil
-            break
-        }
+	buffer = make([]byte, 2000) // Czyszczenie bufora
+	for {                       // Pętla odczytu wiadomości
+		n, err := conn.Read(buffer) // Odczyt wiadomości
+		if err != nil {
+			fmt.Println("Błąd odczytu danych:", err)
+			buffer = nil
+			break
+		}
 
-        message := Message{}
+		message := Message{} // Tworzenie nowej wiadomości
 
-        messageJSON := string(buffer[:n])
-        json.Unmarshal([]byte(messageJSON), &message)
-        fmt.Printf("Wiadomość od %s: %s\n", user.Nick, message.Message)
+		messageJSON := string(buffer[:n])                               // Odczyt wiadomości
+		json.Unmarshal([]byte(messageJSON), &message)                   // Parsowanie wiadomości
+		fmt.Printf("Wiadomość od %s: %s\n", user.Nick, message.Message) // Wyświetlenie wiadomości
 
-        message.Nick = user.Nick
+		message.Nick = user.Nick // Dodanie nicku do wiadomości
 
-        currentTime := time.Now()
+		currentTime := time.Now() // Pobranie aktualnej daty
 
-        message.Date = "" + currentTime.Format("2006-01-02 15:04:05")
+		message.Date = "" + currentTime.Format("2006-01-02 15:04:05") // Dodanie daty do wiadomości
 
-        sendMessageToAll(message)
+		sendMessageToAll(message) // Wysłanie wiadomości do wszystkich
 
-    }
+	}
 
-    removeUser(user)
-    fmt.Println("Użytkownik rozłączony:", user.Nick)
+	removeUser(user)                                 // Usunięcie użytkownika z listy
+	fmt.Println("Użytkownik rozłączony:", user.Nick) // Komunikat o rozłączeniu użytkownika
 
-    sendUsersListToAll()
-
-    message := Message{}
-    message.Nick = "Server"
-    message.Message = user.Nick + " rozłączył się"
-    currentTime := time.Now()
-    message.Date = "" + currentTime.Format("2006-01-02 15:04:05")
-
-    json, err := json.Marshal(message)
-    if err != nil {
-        fmt.Println("Błąd przetwarzania danych:", err)
-    }
-
-    _, err = conn.Write([]byte(json))
-    if err != nil {
-        fmt.Println("Błąd wysyłania danych:", err)
-    }
-
-    conn.Close()
+	sendUsersListToAll() // Wysłanie listy użytkowników do wszystkich
 
 }
 
 func main() {
-	// Check if server.db file exists, if not create it
-	db, err := gorm.Open(sqlite.Open("server.db"), &gorm.Config{})
-  	if err != nil {
-    	panic("failed to connect database")
-  	}
 
-	// Create tables if they don't exist
-	db.AutoMigrate(&Channel{})
+	listener, err := net.Listen("tcp", ":8080") // Uruchomienie serwera TCP
+	if err != nil {
+		fmt.Println("Błąd uruchamiania serwera TCP:", err)
+		return
+	}
+	defer listener.Close() // Zamknięcie serwera
 
-	// TCP server
-	go func() {
-		listener, err := net.Listen("tcp", ":8080")
+	fmt.Println("Serwer czatu TCP uruchomiony na porcie 8080") // Komunikat o uruchomieniu serwera
+
+	for { // Pętla oczekiwania na połączenia
+		conn, err := listener.Accept() // Akceptowanie połączenia
 		if err != nil {
-			fmt.Println("Błąd uruchamiania serwera TCP:", err)
-			return
-		}
-		defer listener.Close()
-
-		fmt.Println("Serwer czatu TCP uruchomiony na porcie 8080")
-
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				fmt.Println("Błąd akceptowania połączenia TCP:", err)
-				continue
-			} else {
-				fmt.Println("Nowe połączenie TCP:", conn.RemoteAddr())
-			}
-
-			go handleConnection(conn)
-		}
-	}()
-
-	// UDP server
-	go func() {
-		udpAddr, err := net.ResolveUDPAddr("udp", ":8081")
-		if err != nil {
-			fmt.Println("Błąd uruchamiania serwera UDP:", err)
-			return
+			fmt.Println("Błąd akceptowania połączenia TCP:", err)
+			continue
+		} else {
+			fmt.Println("Nowe połączenie TCP:", conn.RemoteAddr())
 		}
 
-		udpConn, err := net.ListenUDP("udp", udpAddr)
-		if err != nil {
-			fmt.Println("Błąd uruchamiania serwera UDP:", err)
-			return
-		}
-		defer udpConn.Close()
-
-		fmt.Println("Serwer przesyłania głosu UDP uruchomiony na porcie 8081")
-
-		buffer := make([]byte, 1024)
-
-		for {
-			n, addr, err := udpConn.ReadFromUDP(buffer)
-			if err != nil {
-				fmt.Println("Błąd odczytu danych UDP:", err)
-				continue
-			} else {
-				fmt.Println("Nowe połączenie UDP:", addr)
-			}
-
-			// Handle voice data here
-			// ...
-
-			// Example: Echo back the received data
-			_, err = udpConn.WriteToUDP(buffer[:n], addr)
-			if err != nil {
-				fmt.Println("Błąd wysyłania danych UDP:", err)
-			}
-		}
-	}()
-
-	// Wait indefinitely
-	select {}
+		go handleConnection(conn) // Obsługa połączenia
+	}
 }
 
-func sendUsersListToAll() {
-	userList := make([]User, len(users))
-	for i, user := range users {
+func sendUsersListToAll() { // Wysłanie listy użytkowników do wszystkich
+	userList := make([]User, len(users)) // Tworzenie listy użytkowników
+	for i, user := range users {         // Przepisanie użytkowników do listy
 		userList[i] = User{
 			Nick:  user.Nick,
 			Image: user.Image,
 		}
 	}
 
-	usersList := UsersList{
+	usersList := UsersList{ // Tworzenie listy użytkowników
 		Users: userList,
 	}
 
-	usersJSON, err := json.Marshal(usersList)
+	usersJSON, err := json.Marshal(usersList) // Parsowanie listy użytkowników
 	if err != nil {
 		fmt.Println("Error processing data:", err)
 		return
 	}
 
-	for _, user := range users {
-		_, err := user.Connection.Write([]byte(usersJSON))
+	for _, user := range users { // Wysłanie listy użytkowników do wszystkich
+		_, err := user.Connection.Write([]byte(usersJSON)) // Wysłanie listy użytkowników
 		if err != nil {
 			fmt.Println("Error sending data:", err)
 		}
 	}
 }
 
-func sendMessageToAll(message Message) {
-    json, err := json.Marshal(message)
-    if err != nil {
-        fmt.Println("Błąd przetwarzania danych:", err)
-        return
-    }
+func sendMessageToAll(message Message) { // Wysłanie wiadomości do wszystkich
+	json, err := json.Marshal(message) // Parsowanie wiadomości
+	if err != nil {
+		fmt.Println("Błąd przetwarzania danych:", err)
+		return
+	}
 
-    for _, user := range users {
-        _, err := user.Connection.Write([]byte(json))
-        if err != nil {
-            fmt.Println("Błąd wysyłania danych:", err)
-        }
-    }
+	for _, user := range users { // Wysłanie wiadomości do wszystkich
+		_, err := user.Connection.Write([]byte(json))
+		if err != nil {
+			fmt.Println("Błąd wysyłania danych:", err)
+		}
+	}
 }
 
-func removeUser(user User) {
-    for i, existingUser := range users {
-        if existingUser.UUID == user.UUID {
-            users = append(users[:i], users[i+1:]...)
-            break
-        }
-    }
+func removeUser(user User) { // Usunięcie użytkownika z listy
+	for i, existingUser := range users { // Szukanie użytkownika
+		if existingUser.UUID == user.UUID { // Usunięcie użytkownika
+			users = append(users[:i], users[i+1:]...)
+			break
+		}
+	}
 }
