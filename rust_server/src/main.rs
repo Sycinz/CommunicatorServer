@@ -1,4 +1,5 @@
 use std::{io::{Read, Write}, net::{TcpListener, TcpStream}};
+use uuid::{uuid, Uuid};
 
 struct User {
     nick: String,
@@ -18,18 +19,28 @@ struct UsersList {
     users: Vec<String>
 }
 
+static mut USERS: Vec<String> = vec![];
+
 fn handle_connection(mut stream: TcpStream) {
-    // Creating buffer for data reading
-    let mut buffer = [0; 1024];
+    let mut buffer = [0; 2096]; // Creating buffer for data read
+
     // Reading data from the stream
     stream.read(&mut buffer).expect("Error reading data");
+
     // Converting request from bits to utf-8 string and then printing it
     let request = String::from_utf8_lossy(&buffer[..]);
     println!("Received request: {}", request);
 
-    let response = "Hello Client".as_bytes();
-    // Sending response to connected peer
-    stream.write(response).expect("Cannot read the stream");
+    // Creating new user
+    let user = User {
+        nick: "".to_string(),
+        image: "Empty".to_string(),
+        uuid: Uuid::new_v4().to_string(),
+        connection: stream,
+        permission: "".to_string(),
+        rank: "".to_string(),
+    };
+    
 }
 
 fn main() {
