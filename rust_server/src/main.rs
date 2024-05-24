@@ -1,5 +1,20 @@
 use std::{io::{Read, Write}, net::{TcpListener, TcpStream}};
 
+struct User {
+    nick: String,
+    image: String,
+    uuid: String,
+    connection: TcpStream,
+    permission: String,
+    rank: String
+}
+
+struct Message {
+    nick: String,
+    message: String,
+    date: String
+}
+
 fn handle_connection(mut stream: TcpStream) {
     // Creating buffer for data reading
     let mut buffer = [0; 1024];
