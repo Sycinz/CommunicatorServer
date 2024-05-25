@@ -1,6 +1,8 @@
 use std::{io::{Read, Write}, net::{TcpListener, TcpStream}};
 use uuid::{uuid, Uuid};
+use serde_json::{json, Value};
 
+// #[derive(Serialize, Deserialize, Debug)]
 struct User {
     nick: String,
     image: String,
@@ -31,7 +33,7 @@ fn handle_connection(mut stream: TcpStream) {
     let request = String::from_utf8_lossy(&buffer[..]);
     println!("Received request: {}", request);
 
-    // Creating new user
+    // Creating new user (need to change it into Map::new()
     let user = User {
         nick: "".to_string(),
         image: "Empty".to_string(),
