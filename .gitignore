@@ -21,4 +21,4 @@
 go.work
 
 # Rust directories
-rust_server/target/
+/rust_server/target/
