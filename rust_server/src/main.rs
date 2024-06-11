@@ -33,25 +33,34 @@ fn handle_connection(mut stream: TcpStream) {
     let request = String::from_utf8_lossy(&buffer[..]);
     println!("Received request: {}", request);
 
+    let uuid = Uuid::new_v4().to_string();
     // Creating new user (need to change it into Map::new()
-    let user = User {
-        nick: "".to_string(),
-        image: "Empty".to_string(),
-        uuid: Uuid::new_v4().to_string(),
+    let mut user = User {
+        nick: serde_json::from_str("").unwrap(),
+        image: serde_json::from_str("Empty").unwrap(),
+        uuid: serde_json::from_str(uuid.as_str()).unwrap(),
         connection: stream,
-        permission: "".to_string(),
-        rank: "".to_string(),
+        permission: serde_json::from_str("").unwrap(),
+        rank: serde_json::from_str("").unwrap(),
     };
 
     // Reading nickname from the buffer
     let nick_json = String::from_utf8_lossy(&buffer);
+    
     // JSON unmarshal using serde_json crate
-    let nick = serde_json::from_str(nick_json.as_ref())
+    let nick: String = serde_json::from_str(nick_json.as_ref())
         .expect("JSON was not properly formatted");
+    
     println!("Nickname of a user: {}", nick_json);
 
-    let mut users: Vec<String> = Vec::new();
-    users.push(nick);
+    let user_struct_list: Vec<User> = vec![user];
+    
+    // send_userlist_to_all()
+    
+}
+
+fn send_userlist_to_all(user: User) {
+
 }
 
 fn main() {
