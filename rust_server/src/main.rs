@@ -1,4 +1,5 @@
 use std::{io::{Read, Write}, net::{TcpListener, TcpStream}};
+use std::fmt::format;
 use uuid::{uuid, Uuid};
 use serde_json::{json, Value};
 
@@ -24,10 +25,10 @@ struct UsersList {
 static mut USERS: Vec<String> = vec![];
 
 fn handle_connection(mut stream: TcpStream) {
-    let mut buffer = [0; 2096]; // Creating buffer for data read
+    let mut buffer = Vec::new(); // Creating buffer for data read
 
     // Reading data from the stream (nickname in this case)
-    &stream.read(&mut buffer).expect("Error reading data");
+    stream.read_to_end(&mut buffer).expect("Error reading data");
 
     // Converting request from bits to utf-8 string and then printing it
     let request = String::from_utf8_lossy(&buffer[..]);
@@ -55,23 +56,23 @@ fn handle_connection(mut stream: TcpStream) {
 
     let user_struct_list: Vec<User> = vec![user];
 
-    send_userlist_to_all(user_struct_list);
+    // send_userlist_to_all(user_struct_list);
 }
 
 fn send_userlist_to_all(users_list: Vec<User>) -> String {
-    let json = String::from(r#""empty":"json""#);
+    let json = String::new();
 
-    users_list.iter().map(|user| {
-        println!("{:?}", user.nick);
+    let _ = users_list.iter().map(|user| {
+        
     });
 
     r"Mazno ni".to_string()
 }
 
 fn main() {
-    let listener = TcpListener::bind("127.0.0.1:3058")
+    let listener = TcpListener::bind("127.0.0.1:8080")
         .expect("Failed to bind IP address");
-    println!("Server listening on localhost : 3058");
+    println!("Server listening on localhost : 8080");
 
     for stream in listener.incoming() {
         match stream {
