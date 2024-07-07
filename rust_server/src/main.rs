@@ -61,8 +61,8 @@ fn handle_connection(mut stream: TcpStream) {
 fn send_userlist_to_all(users_list: Vec<User>) -> String {
     let json = String::from(r#""empty":"json""#);
 
-    users_list.iter().map(|user, item| {
-
+    users_list.iter().map(|user| {
+        println!("{:?}", user.nick);
     });
 
     r"Mazno ni".to_string()
