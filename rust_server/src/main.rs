@@ -27,7 +27,7 @@ fn handle_connection(mut stream: TcpStream) {
     let mut buffer = [0; 2096]; // Creating buffer for data read
 
     // Reading data from the stream (nickname in this case)
-    stream.read(&mut buffer).expect("Error reading data");
+    &stream.read(&mut buffer).expect("Error reading data");
 
     // Converting request from bits to utf-8 string and then printing it
     let request = String::from_utf8_lossy(&buffer[..]);
@@ -46,21 +46,26 @@ fn handle_connection(mut stream: TcpStream) {
 
     // Reading nickname from the buffer
     let nick_json = String::from_utf8_lossy(&buffer);
-    
+
     // JSON unmarshal using serde_json crate
     let nick: String = serde_json::from_str(nick_json.as_ref())
         .expect("JSON was not properly formatted");
-    
+
     println!("Nickname of a user: {}", nick_json);
 
     let user_struct_list: Vec<User> = vec![user];
-    
-    // send_userlist_to_all()
-    
+
+    send_userlist_to_all(user_struct_list);
 }
 
-fn send_userlist_to_all(user: User) {
+fn send_userlist_to_all(users_list: Vec<User>) -> String {
+    let json = String::from(r#""empty":"json""#);
 
+    users_list.iter().map(|user, item| {
+
+    });
+
+    r"Mazno ni".to_string()
 }
 
 fn main() {
